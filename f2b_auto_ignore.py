@@ -30,6 +30,7 @@ def main():
     if 'Database' in config:
         db_directory = config['Database'].get('db_directory', db_directory)
         db_file = config['Database'].get('db_file', db_file)
+    
     if 'Global' in config:
         minutes_to_keep = config['Global'].getint('minutes_to_keep', minutes_to_keep)
 
@@ -38,16 +39,12 @@ def main():
                r'\[(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)\].*'
                r'User logged in')
 
-    db_directory = "/var/lib/f2b_auto_ignore"
-    db_file = "login_success.db"
     db_path = os.path.join(db_directory, db_file)
-
     # Check if the directory exists, and if not, create it
     if not os.path.exists(db_directory):
         os.makedirs(db_directory, exist_ok=True)
 
     conn = sqlite3.connect(db_path)
-
     cursor = conn.cursor()
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS logs
