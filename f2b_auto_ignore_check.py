@@ -4,7 +4,7 @@ import sys
 
 # Check if the right number of arguments is provided
 if len(sys.argv) != 2:
-    print("Usage: python check_ip.py <IP>")
+    print("Usage: python f2b_auto_ignore_check.py.py <IP>")
     sys.exit(1)
 
 # Get the IP address from the command line
