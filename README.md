@@ -1,4 +1,4 @@
-# f2b-auto-ignorelist
+# f2b-auto-ignore
 Prevent Fail2Ban from blocking users who changed their password a limited time ago.
 
 I started this project because I was in the situation that again and again I had to manually add entries to ignoreip in the fail2ban configuration file jail.local.
