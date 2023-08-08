@@ -1,5 +1,7 @@
 #!/usr/bin/python
 from daemonize import Daemonize
+import io
+from collections import deque
 import re
 import subprocess
 import sqlite3
@@ -8,7 +10,7 @@ from datetime import datetime, timedelta
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python script.py <minutes>")
+        print("Usage: f2b_auto_ignore.py <minutes>", file=sys.stderr)
         sys.exit(1)
 
     minutes_to_keep = int(sys.argv[1])
@@ -25,30 +27,49 @@ def main():
                       (time TEXT, ip TEXT PRIMARY KEY)''')
     conn.commit()
 
-    with subprocess.Popen(['tail', '-F', '/var/log/messages'], stdout=subprocess.PIPE, universal_newlines=True) as process:
-        for line in iter(process.stdout.readline, ""):
-            match = re.search(pattern, line)
-            if match:
-                log_time_str, ip_address = match.groups()
-                log_time_str += " " + str(datetime.now().year)
-                log_time_dt = datetime.strptime(log_time_str, "%b %d %H:%M:%S %Y")
-                log_time = log_time_dt.strftime("%Y-%m-%d %H:%M:%S")
+    logfile = '/var/log/messages'
+    with io.open(logfile, 'r', buffering=1) as file:
+        # Jump to the end of the file
+        file.seek(0, io.SEEK_END)
 
-                time_threshold = datetime.now() - timedelta(minutes=minutes_to_keep)
-                cursor.execute("DELETE FROM logs WHERE time < ?", (time_threshold.strftime("%Y-%m-%d %H:%M:%S"),))
-                conn.commit()
+        # Read the last 5000 lines
+        lines = deque(maxlen=5000)
+        while len(lines) < 5000:
+            line = file.readline()
+            if not line:
+                break
+            lines.append(line)
 
-                cursor.execute("REPLACE INTO logs (time, ip) VALUES (?, ?)", (log_time, ip_address))
-                conn.commit()
+        # Now, continuously monitor the file for new lines
+        while True:
+            line = file.readline()
+            if not line:  # No new line yet, let's wait a bit
+                continue
+            else:
+                lines.append(line)
 
-# The pid file ensures that only one instance of the daemon runs
-#pid = "/tmp/log_watcher.pid"
-#daemon = Daemonize(app="log_watcher", pid=pid, action=main)
-#daemon.start()
+            # Process the lines
+            for line in lines:
+                match = re.search(pattern, line)
+                if match:
+
+                    log_time_str, ip_address = match.groups()
+                    log_time_str += " " + str(datetime.now().year)
+                    log_time_dt = datetime.strptime(log_time_str, "%b %d %H:%M:%S %Y")
+                    log_time = log_time_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+                    time_threshold = datetime.now() - timedelta(minutes=minutes_to_keep)
+                    cursor.execute("DELETE FROM logs WHERE time < ?", (time_threshold.strftime("%Y-%m-%d %H:%M:%S"),))
+                    conn.commit()
+    
+                    cursor.execute("REPLACE INTO logs (time, ip) VALUES (?, ?)", (log_time, ip_address))
+                    conn.commit()
+
+            lines.clear()
+
 
 if __name__ == '__main__':
         myname=os.path.basename(sys.argv[0])
-        pidfile='/tmp/%s' % myname       # any name
-        daemon = Daemonize(app=myname,pid=pidfile, action=main)
+        pidfile='/run/%s' % myname       # any name
+        daemon = Daemonize(app=myname, pid=pidfile, action=main)
         daemon.start()
-
