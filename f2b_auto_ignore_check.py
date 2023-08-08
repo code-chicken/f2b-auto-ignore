@@ -1,17 +1,36 @@
 #!/usr/bin/python
+import argparse
+import configparser
 import sqlite3
-import sys
+import os, sys
 
-# Check if the right number of arguments is provided
-if len(sys.argv) != 2:
-    print("Usage: python f2b_auto_ignore_check.py.py <IP>")
-    sys.exit(1)
 
-# Get the IP address from the command line
-ip_to_check = sys.argv[1]
+parser = argparse.ArgumentParser(description='Check if there were successful logins from an IP address')
+parser.add_argument('-c', '--config', default='/etc/f2b_auto_ignore.conf',
+                    help='Path to the configuration file')
+parser.add_argument('-i', '--ip-address', required=True,
+                    help='IP address to check for')
+args = parser.parse_args()
+
+config_file_path = args.config
+ip_to_check = args.ip_address
+config = configparser.ConfigParser()
+config.read(config_file_path)
+
+# Set default values
+db_directory = "/var/lib/f2b_auto_ignore"
+db_file = "login_success.db"
+if 'Database' in config:
+    db_directory = config['Database'].get('db_directory', db_directory)
+    db_file = config['Database'].get('db_file', db_file)
+
+db_path = os.path.join(db_directory, db_file)
+# Check if the directory exists, and if not, create it
+if not os.path.exists(db_directory):
+    os.makedirs(db_directory, exist_ok=True)
 
 # Connect to SQLite database
-conn = sqlite3.connect('/var/lib/f2b_auto_ignore/login_success.db')
+conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 
 # Check if IP exists in the database
