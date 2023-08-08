@@ -12,4 +12,7 @@ The other one is a script which has to be defined in "ignorecommand" in the fail
 
 The result is, within a limited time, a user who has successfully logged in some time before will not be blocked by the firewall when some email apps still use the old credentials.
 
+## Requirements
+The Python Daemonize library has to be installed
+
 
