@@ -1,26 +1,53 @@
 #!/usr/bin/python
+import argparse
+import configparser
 from daemonize import Daemonize
 import io
 from collections import deque
 import re
 import subprocess
 import sqlite3
+import time
 import os, sys
 from datetime import datetime, timedelta
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: f2b_auto_ignore.py <minutes>", file=sys.stderr)
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Monitor successful logins')
+    parser.add_argument('-k', '--keep-minutes', type=int, default=120,
+                        help='Minutes to keep the logs')
+    parser.add_argument('-c', '--config', default='/etc/f2b_auto_ignore.conf',
+                        help='Path to the configuration file')
+    args = parser.parse_args()
 
-    minutes_to_keep = int(sys.argv[1])
+    config_file_path = args.config
+    config = configparser.ConfigParser()
+    config.read(config_file_path)
+
+    # Set default values
+    minutes_to_keep = args.keep_minutes
+    db_directory = "/var/lib/f2b_auto_ignore"
+    db_file = "login_success.db"
+    if 'Database' in config:
+        db_directory = config['Database'].get('db_directory', db_directory)
+        db_file = config['Database'].get('db_file', db_file)
+    if 'Global' in config:
+        minutes_to_keep = config['Global'].getint('minutes_to_keep', minutes_to_keep)
 
     pattern = (r'(\b\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\b).*'
                r'cyrus/imap.*login:.*'
                r'\[(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)\].*'
                r'User logged in')
 
-    conn = sqlite3.connect('/var/lib/f2b_auto_ignore/login_success.db')
+    db_directory = "/var/lib/f2b_auto_ignore"
+    db_file = "login_success.db"
+    db_path = os.path.join(db_directory, db_file)
+
+    # Check if the directory exists, and if not, create it
+    if not os.path.exists(db_directory):
+        os.makedirs(db_directory, exist_ok=True)
+
+    conn = sqlite3.connect(db_path)
+
     cursor = conn.cursor()
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS logs
@@ -44,6 +71,7 @@ def main():
         while True:
             line = file.readline()
             if not line:  # No new line yet, let's wait a bit
+                time.sleep(0.1)
                 continue
             else:
                 lines.append(line)
@@ -70,6 +98,6 @@ def main():
 
 if __name__ == '__main__':
         myname=os.path.basename(sys.argv[0])
-        pidfile='/run/%s' % myname       # any name
+        pidfile='/run/%s.pid' % myname       # any name
         daemon = Daemonize(app=myname, pid=pidfile, action=main)
         daemon.start()
