@@ -10,9 +10,9 @@ One is a daemon which watches the log file in /var/log/messages and searches for
 
 The other one is a script which has to be defined in "ignorecommand" in the fail2ban configuration file jail.local. This script will look for an IP which has been found by the daemon mentioned before.
 
-The result is, within a limited time, a user who has successfully logged in some time before will not be blocked by the firewall when some email apps still use the old credentials.
+The result is, within a limited time, a user who has successfully logged in some time before will not be blocked by the firewall when  - for example - some email apps still try to login with the old credentials.
 
 ## Requirements
-The Python Daemonize library has to be installed
+* Python Daemonize library
 
 
