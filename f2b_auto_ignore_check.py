@@ -25,12 +25,9 @@ if 'Database' in config:
     db_file = config['Database'].get('db_file', db_file)
 
 db_path = os.path.join(db_directory, db_file)
-# Check if the directory exists, and if not, create it
-if not os.path.exists(db_directory):
-    os.makedirs(db_directory, exist_ok=True)
 
 # Connect to SQLite database
-conn = sqlite3.connect(db_path)
+conn = sqlite3.connect("file:" + db_path + "?mode=ro", uri=True)
 cursor = conn.cursor()
 
 # Check if IP exists in the database
