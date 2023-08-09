@@ -11,14 +11,20 @@ import time
 import os, sys
 from datetime import datetime, timedelta
 
-def main():
+def read_args():
+    global args
+
     parser = argparse.ArgumentParser(description='Monitor successful logins')
     parser.add_argument('-k', '--keep-minutes', type=int, default=120,
                         help='Minutes to keep the logs')
     parser.add_argument('-c', '--config', default='/etc/f2b_auto_ignore.conf',
                         help='Path to the configuration file')
+    parser.add_argument('-d', '--daemon', action='store_true', 
+                        help="Run as a daemon.")
     args = parser.parse_args()
 
+
+def main():
     config_file_path = args.config
     config = configparser.ConfigParser()
     config.read(config_file_path)
@@ -94,7 +100,11 @@ def main():
 
 
 if __name__ == '__main__':
-        myname=os.path.basename(sys.argv[0])
-        pidfile='/run/%s.pid' % myname       # any name
-        daemon = Daemonize(app=myname, pid=pidfile, action=main)
-        daemon.start()
+        read_args()
+        if args.daemon:
+            myname=os.path.basename(sys.argv[0])
+            pidfile='/run/%s.pid' % myname       # any name
+            daemon = Daemonize(app=myname, pid=pidfile, action=main)
+            daemon.start()
+        else:
+            main()
