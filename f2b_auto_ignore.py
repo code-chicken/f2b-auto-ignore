@@ -3,6 +3,7 @@ import argparse
 import configparser
 from daemonize import Daemonize
 import io
+import ipaddress
 from collections import deque
 import re
 import subprocess
@@ -33,12 +34,32 @@ def main():
     minutes_to_keep = args.keep_minutes
     db_directory = "/var/lib/f2b_auto_ignore"
     db_file = "login_success.db"
+    local_ips = ''
+    local_ip_list = []
+
+    def local_ips_to_ip_list(ip_string):
+        """Get all IP addresses from IP in CIDR notation mask.
+
+        Args:
+            A string with on or multiple IPs in CIDR notation.
+
+        Returns:
+            A list of IP addresses in the subnet.
+        """
+        result = []
+        cidr_ip_list = re.split(', ', local_ips)
+        for cidr_ip in cidr_ip_list:
+            network = ipaddress.ip_network(cidr_ip)
+            result += [str(ip) for ip in network]
+        return result
+
     if 'Database' in config:
         db_directory = config['Database'].get('db_directory', db_directory)
         db_file = config['Database'].get('db_file', db_file)
-    
     if 'Global' in config:
         minutes_to_keep = config['Global'].getint('minutes_to_keep', minutes_to_keep)
+        local_ips = config['Global'].get('local_ips', local_ips);
+    local_ip_list = local_ips_to_ip_list(local_ips)
 
     pattern = (r'(\b\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\b).*'
                r'cyrus/imap.*login:.*'
@@ -85,16 +106,17 @@ def main():
                 if match:
 
                     log_time_str, ip_address = match.groups()
-                    log_time_str += " " + str(datetime.now().year)
-                    log_time_dt = datetime.strptime(log_time_str, "%b %d %H:%M:%S %Y")
-                    log_time = log_time_dt.strftime("%Y-%m-%d %H:%M:%S")
+                    if ip_address not in local_ip_list:
+                        log_time_str += " " + str(datetime.now().year)
+                        log_time_dt = datetime.strptime(log_time_str, "%b %d %H:%M:%S %Y")
+                        log_time = log_time_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-                    time_threshold = datetime.now() - timedelta(minutes=minutes_to_keep)
-                    cursor.execute("DELETE FROM logs WHERE time < ?", (time_threshold.strftime("%Y-%m-%d %H:%M:%S"),))
-                    conn.commit()
+                        time_threshold = datetime.now() - timedelta(minutes=minutes_to_keep)
+                        cursor.execute("DELETE FROM logs WHERE time < ?", (time_threshold.strftime("%Y-%m-%d %H:%M:%S"),))
+                        conn.commit()
     
-                    cursor.execute("REPLACE INTO logs (time, ip) VALUES (?, ?)", (log_time, ip_address))
-                    conn.commit()
+                        cursor.execute("REPLACE INTO logs (time, ip) VALUES (?, ?)", (log_time, ip_address))
+                        conn.commit()
 
             lines.clear()
 
