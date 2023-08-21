@@ -12,6 +12,7 @@ import time
 import os, sys
 from datetime import datetime, timedelta
 
+
 def read_args():
     global args
 
@@ -20,7 +21,7 @@ def read_args():
                         help='Minutes to keep the logs')
     parser.add_argument('-c', '--config', default='/etc/f2b_auto_ignore.conf',
                         help='Path to the configuration file')
-    parser.add_argument('-d', '--daemon', action='store_true', 
+    parser.add_argument('-d', '--daemon', action='store_true',
                         help="Run as a daemon.")
     args = parser.parse_args()
 
@@ -58,7 +59,7 @@ def main():
         db_file = config['Database'].get('db_file', db_file)
     if 'Global' in config:
         minutes_to_keep = config['Global'].getint('minutes_to_keep', minutes_to_keep)
-        local_ips = config['Global'].get('local_ips', local_ips);
+        local_ips = config['Global'].get('local_ips', local_ips)
     local_ip_list = local_ips_to_ip_list(local_ips)
 
     pattern = (r'(\b\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\b).*'
@@ -112,9 +113,10 @@ def main():
                         log_time = log_time_dt.strftime("%Y-%m-%d %H:%M:%S")
 
                         time_threshold = datetime.now() - timedelta(minutes=minutes_to_keep)
-                        cursor.execute("DELETE FROM logs WHERE time < ?", (time_threshold.strftime("%Y-%m-%d %H:%M:%S"),))
+                        cursor.execute("DELETE FROM logs WHERE time < ?",
+                                       (time_threshold.strftime("%Y-%m-%d %H:%M:%S"),))
                         conn.commit()
-    
+
                         cursor.execute("REPLACE INTO logs (time, ip) VALUES (?, ?)", (log_time, ip_address))
                         conn.commit()
 
@@ -122,11 +124,11 @@ def main():
 
 
 if __name__ == '__main__':
-        read_args()
-        if args.daemon:
-            myname=os.path.basename(sys.argv[0])
-            pidfile='/run/%s.pid' % myname       # any name
-            daemon = Daemonize(app=myname, pid=pidfile, action=main)
-            daemon.start()
-        else:
-            main()
+    read_args()
+    if args.daemon:
+        myname = os.path.basename(sys.argv[0])
+        pidfile = '/run/%s.pid' % myname  # any name
+        daemon = Daemonize(app=myname, pid=pidfile, action=main)
+        daemon.start()
+    else:
+        main()
