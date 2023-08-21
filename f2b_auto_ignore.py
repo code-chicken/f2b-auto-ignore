@@ -1,16 +1,17 @@
 #!/usr/bin/python
 import argparse
 import configparser
-from daemonize import Daemonize
 import io
 import ipaddress
-from collections import deque
+import os
 import re
-import subprocess
 import sqlite3
+import sys
 import time
-import os, sys
+from collections import deque
 from datetime import datetime, timedelta
+
+from daemonize import Daemonize
 
 
 def read_args():
@@ -36,9 +37,8 @@ def main():
     db_directory = "/var/lib/f2b_auto_ignore"
     db_file = "login_success.db"
     local_ips = ''
-    local_ip_list = []
 
-    def local_ips_to_ip_list(ip_string):
+    def local_ips_to_ip_list():
         """Get all IP addresses from IP in CIDR notation mask.
 
         Args:
@@ -60,7 +60,7 @@ def main():
     if 'Global' in config:
         minutes_to_keep = config['Global'].getint('minutes_to_keep', minutes_to_keep)
         local_ips = config['Global'].get('local_ips', local_ips)
-    local_ip_list = local_ips_to_ip_list(local_ips)
+    local_ip_list = local_ips_to_ip_list()
 
     pattern = (r'(\b\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\b).*'
                r'cyrus/imap.*login:.*'
@@ -126,9 +126,9 @@ def main():
 if __name__ == '__main__':
     read_args()
     if args.daemon:
-        myname = os.path.basename(sys.argv[0])
-        pidfile = '/run/%s.pid' % myname  # any name
-        daemon = Daemonize(app=myname, pid=pidfile, action=main)
+        my_name = os.path.basename(sys.argv[0])
+        pid_file = '/run/%s.pid' % my_name  # any name
+        daemon = Daemonize(app=my_name, pid=pid_file, action=main)
         daemon.start()
     else:
         main()
